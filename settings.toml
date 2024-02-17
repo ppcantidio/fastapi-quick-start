@@ -1,0 +1,12 @@
+[default]
+LOG_LEVEL = "INFO"
+LOG_JSON_FORMAT = false
+
+[development]
+LOG_LEVEL = "DEBUG"
+LOG_JSON_FORMAT = false
+
+
+[production]
+LOG_LEVEL = "INFO"
+LOG_JSON_FORMAT = true
