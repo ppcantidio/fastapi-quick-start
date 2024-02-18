@@ -10,33 +10,44 @@ access_logger = structlog.stdlib.get_logger("api.access")
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware class for logging HTTP requests and responses.
+
+    This middleware logs the details of incoming HTTP requests and outgoing responses,
+    including the request method, URL, status code, client IP address, and processing time.
+
+    Methods:
+        dispatch(request: Request, call_next: RequestResponseEndpoint) -> Response:
+            Dispatches the request to the next middleware or endpoint, and logs the details
+            of the request and response.
+
+    """
+
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         structlog.contextvars.clear_contextvars()
-        # These context vars will be added to all log entries emitted during the request
         request_id = correlation_id.get()
         structlog.contextvars.bind_contextvars(request_id=request_id)
 
-        start_time = time.perf_counter_ns()
-        # If the call_next raises an error, we still want to return our own 500 response,
-        # so we can add headers to it (process time, request ID...)
         response = Response(status_code=500)
+
+        start_time = time.perf_counter_ns()
         try:
             response = await call_next(request)
         except Exception:
-            # TODO: Validate that we don't swallow exceptions (unit test?)
             structlog.stdlib.get_logger("core").exception("Uncaught exception")
             raise
         finally:
             process_time = time.perf_counter_ns() - start_time
+
             status_code = response.status_code
             url = get_path_with_query_string(request.scope)
             client_host = request.client.host
             client_port = request.client.port
             http_method = request.method
             http_version = request.scope["http_version"]
-            # Recreate the Uvicorn access log format, but add all parameters as structured information
+
             access_logger.info(
                 f"""{client_host}:{client_port} - "{http_method} {url} HTTP/{http_version}" {status_code}""",
                 http={
