@@ -66,14 +66,14 @@ def logging_setup():
         ],
     )
 
-    formatter_handler = logging.StreamHandler().setFormatter(formatter)
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
 
     root_logger = logging.getLogger()
-    root_logger.addHandler(formatter_handler)
+    root_logger.addHandler(handler)
     root_logger.setLevel(log_level.upper())
 
     if json_logs:
-        # Send logs to Logtail
         root_logger.addHandler(CloudLoggingHandler())
 
     for _log in ["uvicorn.error", "uvicorn"]:
