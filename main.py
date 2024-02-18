@@ -1,14 +1,12 @@
-import logging
-
 import uvicorn
 from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
-from config import setup_logging
 from core.api.v0.routes import add_routers_v0
 from core.infra.errors import BadRequest, Forbidden, NotFound, Unauthorized
 from core.infra.handlers import errors_handlers
+from core.infra.logging.logging_setup import logging_setup
 from core.infra.middlewares.logging_middleware import LoggingMiddleware
 
 
@@ -38,7 +36,7 @@ def add_handdlers(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    setup_logging()
+    logging_setup()
 
     app = FastAPI(title="Example API", version="1.0.0")
 

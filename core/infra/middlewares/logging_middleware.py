@@ -1,12 +1,11 @@
+import logging
 import time
 
-import structlog
-from asgi_correlation_id.context import correlation_id
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from uvicorn.protocols.utils import get_path_with_query_string
 
-access_logger = structlog.stdlib.get_logger("api.access")
+access_logger = logging.getLogger("access")
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -26,17 +25,13 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        structlog.contextvars.clear_contextvars()
-        request_id = correlation_id.get()
-        structlog.contextvars.bind_contextvars(request_id=request_id)
-
         response = Response(status_code=500)
 
         start_time = time.perf_counter_ns()
         try:
             response = await call_next(request)
         except Exception:
-            structlog.stdlib.get_logger("core").exception("Uncaught exception")
+            logging.getLogger("core").exception("Uncaught exception")
             raise
         finally:
             process_time = time.perf_counter_ns() - start_time
@@ -50,15 +45,16 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
             access_logger.info(
                 f"""{client_host}:{client_port} - "{http_method} {url} HTTP/{http_version}" {status_code}""",
-                http={
-                    "url": str(request.url),
-                    "status_code": status_code,
-                    "method": http_method,
-                    "request_id": request_id,
-                    "version": http_version,
+                extra={
+                    "http": {
+                        "url": str(request.url),
+                        "status_code": status_code,
+                        "method": http_method,
+                        "version": http_version,
+                    },
+                    "network": {"client": {"ip": client_host, "port": client_port}},
+                    "duration": process_time,
                 },
-                network={"client": {"ip": client_host, "port": client_port}},
-                duration=process_time,
             )
             response.headers["X-Process-Time"] = str(process_time / 10**9)
             return response
