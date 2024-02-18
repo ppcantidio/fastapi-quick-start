@@ -1,12 +1,13 @@
 import logging
-import queue
 import sys
 from logging.handlers import QueueHandler
 
 import structlog
+from asgi_correlation_id import correlation_id
 from dynaconf import Dynaconf
-from logtail import LogtailHandler
 from structlog.types import EventDict, Processor
+
+from core.infra.handlers.logging_handler import LoggingHandler
 
 settings = Dynaconf(
     envvar_prefix="APP",
@@ -105,13 +106,9 @@ def setup_logging():
 
     root_logger.addHandler(handler)
     root_logger.setLevel(log_level.upper())
-    log_queue = queue.Queue(-1)
-    root_logger.addHandler(QueueHandler(log_queue))
-    if json_logs:
 
-        root_logger.addHandler(
-            LogtailHandler(source_token=settings("LOGTAIL_SOURCE_TOKEN"))
-        )
+    if json_logs:
+        root_logger.addHandler(LoggingHandler())
 
     for _log in ["uvicorn.error", "uvicorn"]:
         # Clear the log handlers for uvicorn loggers, and enable propagation
@@ -138,7 +135,7 @@ def setup_logging():
             sys.__excepthook__(exc_type, exc_value, exc_traceback)
             return
 
-        root_logger.error(
+        root_logger.critical(
             "Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback)
         )
 

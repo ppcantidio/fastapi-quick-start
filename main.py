@@ -1,3 +1,5 @@
+import logging
+
 import uvicorn
 from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI
@@ -46,6 +48,8 @@ def create_app() -> FastAPI:
 
     return app
 
+
+app = create_app()
 
 if __name__ == "__main__":
     app = create_app()
